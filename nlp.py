@@ -12,6 +12,9 @@ import json
 import re
 import six
 
+pos_tag = ('UNKNOWN', 'ADJ', 'ADP', 'ADV', 'CONJ', 'DET', 'NOUN', 'NUM',
+			'PRON', 'PRT', 'PUNCT', 'VERB', 'X', 'AFFIX')
+
 def formPhrase(tokens, depend):
 	dependIndex = -1
 	left = []
@@ -25,8 +28,20 @@ def formPhrase(tokens, depend):
 
 	return left + [depend] + right
 
+def createVerbObj(tokens, indexes):
+	verb = ""
+	firstVerbSeen = False
+	obj = ""
+	for index in indexes:
+		if not firstVerbSeen and pos_tag[tokens[index].part_of_speech.tag] == 'VERB':
+			verb += tokens[index].text.content + " "
+		else:
+			firstVerbSeen = True
+			obj += tokens[index].text.content + " "
+	return verb, obj
 
 def breakToStruct(tokens, startI, endI):
+	print("start, end: ",startI, endI)
 	rootIndex = -1
 	#subject = ""
 	phrases = []
@@ -34,7 +49,7 @@ def breakToStruct(tokens, startI, endI):
 	for i in range(startI, endI):	# find the root
 		#subject = subject + tokens[i].text.content + " "
 		if str(tokens[i].dependency_edge.label) == '54':	# 54 IS ROOT
-			rootIndex = i
+			rootIndex = i 
 			break
 	
 	for i in range(startI, endI):	# find the formPhrase from word that depend on rootIndex
@@ -44,7 +59,86 @@ def breakToStruct(tokens, startI, endI):
 			phrases.append(formPhrase(tokens, i))
 
 
-	result = {}
+	temp = []
+	for i in range(len(phrases)): # remove moreover, this kind of aux phrase
+		allAuxPunc = True
+		for j in phrases[i]:
+			if pos_tag[tokens[i].part_of_speech.tag] != 'ADV' and pos_tag[tokens[i].part_of_speech.tag]!= 'PUNCT': # although and shit
+				allAuxPunc = False
+
+		if not allAuxPunc:
+			temp.append(phrases[i])
+
+	phrases = temp
+
+	subject = ""
+	subjectToken = phrases[0]
+	print(phrases)
+	for i in subjectToken:
+		subject += tokens[i].text.content + " "
+
+	result = {subject:{}}
+
+	verb = ""
+
+	for i in range(startI, endI):	# append aux verb 
+		if tokens[i].dependency_edge.head_token_index == rootIndex:
+			if pos_tag[tokens[i].part_of_speech.tag] == 'VERB':
+				if str(tokens[i].dependency_edge.label) == '9': # 9 is aux
+					verb += tokens[i].text.content + " "
+
+	verb += tokens[rootIndex].text.content
+
+	for i in phrases[1]:
+		validAux = True
+		if tokens[i].dependency_edge.head_token_index == rootIndex and pos_tag[tokens[i].part_of_speech.tag] == 'VERB' and str(tokens[i].dependency_edge.label) == '9': # 9 is aux
+			pass
+		else:
+			validAux = False
+
+	if validAux:
+		del phrases[1]
+
+
+	rootVerb = {}
+
+	rootVerb[verb] = ""
+	print(phrases)
+	for i in phrases[1]:
+		rootVerb[verb] += tokens[i].text.content+ " "
+
+
+	for k in result:	# k is key, should only be one
+		result[k] = rootVerb
+
+	#pos_tag = ('UNKNOWN', 'ADJ', 'ADP', 'ADV', 'CONJ', 'DET', 'NOUN', 'NUM',
+	#		   'PRON', 'PRT', 'PUNCT', 'VERB', 'X', 'AFFIX')
+
+	for i in range(2, len(phrases)):	# start at 2, 0 is subject, 1 is 1st object, rootindex is 1st verb
+		isDetOrPunct = False
+		count = 0	# nth of item in one phrase
+		for j in phrases[i]:
+			if pos_tag[tokens[j].part_of_speech.tag] == 'CONJ':#or pos_tag[tokens[j].part_of_speech.tag] == 'PUNCT':
+				isDetOrPunct = True
+				break
+			if count == 0 and pos_tag[tokens[j].part_of_speech.tag] == 'VERB':
+				verb, obj = createVerbObj(tokens, phrases[i])
+				print("verb: ", verb, "obj: ",obj)
+				for k in result:
+					result[k][verb] = obj 	# insert new verb and object 
+			break
+			count += 1
+
+		if isDetOrPunct:
+			continue 
+
+
+
+
+	#print(subject)	
+	#print(result)
+
+	return result
 
 	'''
 	result = {}
@@ -55,34 +149,40 @@ def breakToStruct(tokens, startI, endI):
 
 
 def entities_text(text):
-    """Detects entities in the text."""
-    client = language.LanguageServiceClient()
+	"""Detects entities in the text."""
+	client = language.LanguageServiceClient()
 
-    if isinstance(text, six.binary_type):
-        text = text.decode('utf-8')
+	if isinstance(text, six.binary_type):
+		text = text.decode('utf-8')
 
-    # Instantiates a plain text document.
-    document = types.Document(
-        content=text,
-        type=enums.Document.Type.PLAIN_TEXT)
+	# Instantiates a plain text document.
+	document = types.Document(
+		content=text,
+		type=enums.Document.Type.PLAIN_TEXT)
 
-    # Detects entities in the document. You can also analyze HTML with:
-    #   document.type == enums.Document.Type.HTML
-    entities = client.analyze_entities(document).entities
+	# Detects entities in the document. You can also analyze HTML with:
+	#   document.type == enums.Document.Type.HTML
+	entities = client.analyze_entities(document).entities
 
-    # entity types from enums.Entity.Type
-    entity_type = ('UNKNOWN', 'PERSON', 'LOCATION', 'ORGANIZATION',
-                   'EVENT', 'WORK_OF_ART', 'CONSUMER_GOOD', 'OTHER')
-    print(entities)
-    
-    for entity in entities:
-        print('=' * 20)
-        print(u'{:<16}: {}'.format('name', entity.name))
-        print(u'{:<16}: {}'.format('type', entity_type[entity.type]))
-        print(u'{:<16}: {}'.format('metadata', entity.metadata))
-        print(u'{:<16}: {}'.format('salience', entity.salience))
-        print(u'{:<16}: {}'.format('wikipedia_url',
-              entity.metadata.get('wikipedia_url', '-')))
+	# entity types from enums.Entity.Type
+	entity_type = ('UNKNOWN', 'PERSON', 'LOCATION', 'ORGANIZATION',
+				   'EVENT', 'WORK_OF_ART', 'CONSUMER_GOOD', 'OTHER')
+	# print(entities)
+
+	result = {}
+	for entity in entities:
+		result[entity.name] = entity.salience
+		'''
+		print('=' * 20)
+		print(u'{:<16}: {}'.format('name', entity.name))
+		print(u'{:<16}: {}'.format('type', entity_type[entity.type]))
+		print(u'{:<16}: {}'.format('metadata', entity.metadata))
+		print(u'{:<16}: {}'.format('salience', entity.salience))
+		print(u'{:<16}: {}'.format('wikipedia_url',
+			entity.metadata.get('wikipedia_url', '-')))
+		'''
+	print(result)
+	return result
 
 
 def syntax_text(text):
@@ -104,19 +204,35 @@ def syntax_text(text):
 	print(result)
 	# part-of-speech tags from enums.PartOfSpeech.Tag
 	pos_tag = ('UNKNOWN', 'ADJ', 'ADP', 'ADV', 'CONJ', 'DET', 'NOUN', 'NUM',
-               'PRON', 'PRT', 'PUNCT', 'VERB', 'X', 'AFFIX')
+			   'PRON', 'PRT', 'PUNCT', 'VERB', 'X', 'AFFIX')
 
 	for token in tokens:
 		print(u'{}: {}'.format(pos_tag[token.part_of_speech.tag],
-                               token.text.content))
+							   token.text.content))
 
 	start = 0
-	R = []
-	print("type of token:" + str(type(tokens)))
+	sentences = []
+	saliences = []
+	# print("type of token:" + str(type(tokens)))
+	count = 0	# count follows the number of sentence it is on
 	for i in range(len(tokens)):
+		#print ("i, start:", i, start)
 		if tokens[i].text.content == '.' or tokens[i].text.content == '?':
-			R.append(breakToStruct(tokens, start, i+1))
-			start = start + i + 1
+			sentenceFrac = breakToStruct(tokens, start, i+1)	# break to frac structure
+			sentences.append(sentenceFrac)
+			sent = result.sentences[count].text.content
+			print("sent: ", sent)
+			salience = entities_text(sent)		# change get salience analysis on individual sentence
+
+			saliences.append(salience)
+			start = i + 1
+			count += 1
+
+	print("sentences: ", sentences)
+	print("saliences:", saliences)
+
+	# assert len(sentences) == len(saliences)
+
 
 
 
@@ -146,127 +262,12 @@ def syntax_text(text):
 	'''
 
 
-str1 = "black hole is a region and has a gravitational field. Region is a space and blocks light."
-
+#str1 = "black hole is a region and has a gravitational field. Region is a space and blocks"
+str1 = "A galaxy has black holes. The universe contains black holes. Black holes are regions and have strong gravity. Region is space and doesn't let light escape."
+#str1 = "The boundary of the region from which no escape is possible is called the event horizon."
+#str1= "Moreover, black holes have strong gravity."
+#str1 = "black holes are regions and have strong gravity. region is a space and does not let light escape. "
 syntax_text(str1)
 
-'''
+# entities_text(str1)
 
-def isFreq(food):
-	freqlist = ['BlueBerries', 'Lowfat Greek Yogurt','Mango','Pineapple']
-	for i in freqlist:
-		if i in food:
-			return True
-	return False
-
-
-def getItemsByDiningHalls(name):
-	jsonlist = os.listdir("ucla-dining-dataset/data/v2/")
-
-	#removal = "Teriyaki Chicken|Spinach|Sesame|Miso Soup|Grilled Cheese|Chicken Breast|Cheese Pizza"
-
-	menuItem = ""
-
-	for i in jsonlist:
-		data = json.load(open("ucla-dining-dataset/data/v2/" + i))
-		for mealKey in data:
-			for restaurant in data[mealKey]:
-				if(restaurant["r"]==name):		#for specific restaurant			
-					for kitchen in restaurant["rk"]:
-						for items in kitchen["i"]:
-							if(isFreq(items["e"])):
-								continue
-							menuItem+=items["e"]
-							#addToDict(items["e"])
-
-	return menuItem
-
-
-def classify_text(text):
-    """Classifies content categories of the provided text."""
-    client = language.LanguageServiceClient()
-
-    if isinstance(text, six.binary_type):
-        text = text.decode('utf-8')
-
-    document = types.Document(
-        content=text.encode('utf-8'),
-        type=enums.Document.Type.PLAIN_TEXT)
-
-    categories = client.classify_text(document).categories
-
-    for category in categories:
-        print(u'=' * 20)
-        print(u'{:<16}: {}'.format('name', category.name))
-        print(u'{:<16}: {}'.format('confidence', category.confidence))
-
-    print('\n\n')
-
-    return categories
-
-
-def pickInput():
-	print("please input")
-	print("B : Bruin Plate")
-	print("C : Covel")
-	print("D : De Neve")
-	print("F : FEAST at Rieber")
-	print("M : your own item")
-	print("other key : quit")
-
-	x = input()
-
-	if x=='B':
-		return getItemsByDiningHalls('Bruin Plate')[0:120000]
-	elif x=='C':
-		return getItemsByDiningHalls('Covel')[0:120000]
-	elif x=='D':
-		return getItemsByDiningHalls('De Neve')[0:120000]
-	elif x=='F':
-		return getItemsByDiningHalls('FEAST at Rieber')[0:120000]
-	elif x=='M':
-		print("your food: ")
-		y = input()
-		while len(y)<50000:
-			y = 2 * y
-		return y
-
-	else:
-		exit()
-
-
-
-def loop(x):
-
-	print('\n\n\n')
-
-
-	result = classify_text(x)
-
-	if not result:
-		print('you typed nonsense...')
-		return
-	for i in result:
-
-		name = i.name
-		confidence = i.confidence
-		print(name)
-		print(confidence)
-		if 'food' not in name.lower():
-			print('This thing ain\'t even food you know')
-			continue
-
-		else:
-			if confidence>0.8:
-				print('literally best food ever')
-			elif confidence>0.5:
-				print('it is merely edible, okay')
-			elif confidence>0.3:
-				print('i am not sure whether you should eat that')
-			else:
-				print('imma say that ain\'t food')
-
-		print('\n')
-
-			
-'''
