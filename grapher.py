@@ -7,7 +7,7 @@ from nltk.tokenize import word_tokenize
 
 
 target = "A galaxy has black holes. The universe contains black holes. Black holes are regions and have strong gravity. Region is space and doesn't let light escape."
-#target ="One of the consequences of Einstein’s general theory of relativity was a solution in which space-time curved so much that even a beam of light became trapped. These solutions became called black holes, and the study of them is one of the most intriguing fields of cosmology. Application of string theory to study black holes is one of the most significant pieces of evidence in favor of string theory."
+target ="One of the consequences of Einstein’s general theory of relativity was a solution in which space-time curved so much that even a beam of light became trapped. These solutions became called black holes, and the study of them is one of the most intriguing fields of cosmology. Application of string theory to study black holes is one of the most significant pieces of evidence in favor of string theory."
 #target ="One of the consequences of Einstein’s general theory of relativity was a solution in which space-time curved so much that even a beam of light became trapped."
 sentences, salience = nlp.syntax_text(target.lower())
 
@@ -164,16 +164,15 @@ def grapher(paragraphs, p_salience):
 				break
 		if found:
 			break
-	#nx.draw_networkx(text)
-	#pos=nx.circular_layout(text)
-	#nx.draw_networkx_nodes(text,pos,node_size=4500)
-	#nx.draw_networkx_edges(text,pos,width=3.0)
-	#nx.draw_networkx_labels(text,pos)
-	#nx.draw_networkx_edge_labels(text,pos,edge_labels=nx.get_edge_attributes(text,'label'))
+	pos=nx.random_layout(text)
+	nx.draw_networkx_nodes(text,pos,node_size=4500)
+	nx.draw_networkx_edges(text,pos,width=3.0)
+	nx.draw_networkx_labels(text,pos)
+	nx.draw_networkx_edge_labels(text,pos,edge_labels=nx.get_edge_attributes(text,'label'))
 	#plt.title("Mind Map")
-	#plt.axis('off')
-	#plt.show()
-
+	plt.axis('off')
+	plt.show()
+	print (text.nodes.data())
 	makeNotes(1, mostImportantToken, False)
 
 

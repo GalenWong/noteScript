@@ -39,7 +39,10 @@ def createVerbObj(tokens, indexes):
 			verb += tokens[index].text.content + " "
 		else:
 			firstVerbSeen = True
-			obj += tokens[index].lemma + " "
+			if pos_tag[tokens[index].part_of_speech.tag] == 'NOUN':
+				obj += tokens[index].lemma + " "
+			else:
+				obj += tokens[index].text.content + " "
 	return verb, obj
 
 def breakToStruct(tokens, startI, endI):
@@ -77,7 +80,10 @@ def breakToStruct(tokens, startI, endI):
 	subjectToken = phrases[0]
 	print(phrases)
 	for i in subjectToken:
-		subject += tokens[i].lemma + " "
+		if pos_tag[tokens[i].part_of_speech.tag] != 'NOUN':
+			subject += tokens[i].lemma + " "
+		else:
+			subject += tokens[i].text.content + " "
 
 	result = {subject:{}}
 
@@ -107,7 +113,7 @@ def breakToStruct(tokens, startI, endI):
 	rootVerb[verb] = ""
 	print(phrases)
 	for i in phrases[1]:
-		rootVerb[verb] += tokens[i].lemma+ " "
+		rootVerb[verb] += tokens[i].text.content+ " "
 
 
 	for k in result:	# k is key, should only be one
