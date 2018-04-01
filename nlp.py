@@ -21,6 +21,8 @@ def formPhrase(tokens, depend):
 	right = []
 	for i in range(len(tokens)):
 		if tokens[i].dependency_edge.head_token_index == depend:
+			if pos_tag[tokens[i].part_of_speech.tag] == 'DET':
+				continue
 			if i < depend:
 				left = left + formPhrase(tokens, i)
 			else:
@@ -37,7 +39,7 @@ def createVerbObj(tokens, indexes):
 			verb += tokens[index].text.content + " "
 		else:
 			firstVerbSeen = True
-			obj += tokens[index].text.content + " "
+			obj += tokens[index].lemma + " "
 	return verb, obj
 
 def breakToStruct(tokens, startI, endI):
@@ -75,7 +77,7 @@ def breakToStruct(tokens, startI, endI):
 	subjectToken = phrases[0]
 	print(phrases)
 	for i in subjectToken:
-		subject += tokens[i].text.content + " "
+		subject += tokens[i].lemma + " "
 
 	result = {subject:{}}
 
@@ -105,7 +107,7 @@ def breakToStruct(tokens, startI, endI):
 	rootVerb[verb] = ""
 	print(phrases)
 	for i in phrases[1]:
-		rootVerb[verb] += tokens[i].text.content+ " "
+		rootVerb[verb] += tokens[i].lemma+ " "
 
 
 	for k in result:	# k is key, should only be one
@@ -132,20 +134,8 @@ def breakToStruct(tokens, startI, endI):
 		if isDetOrPunct:
 			continue 
 
-
-
-
-	#print(subject)	
-	#print(result)
-
 	return result
 
-	'''
-	result = {}
-	result["subject"] = phrases[0]
-	result["verb"] = []
-	result["verb"].append(tokens[rootIndex].text.content)
-	'''
 
 
 def entities_text(text):
@@ -228,46 +218,47 @@ def syntax_text(text):
 			start = i + 1
 			count += 1
 
+	sentencesNoSpace = []
+	for sentence in sentences:
+		sentencesNoSpace.append(removeTrailingSpace(sentence))
+
+	sentences = sentencesNoSpace
 	print("sentences: ", sentences)
 	print("saliences:", saliences)
 
+	return sentences, saliences
+
 	# assert len(sentences) == len(saliences)
 
+def removeTrailingSpace(sentences):
+	print(sentences)
+	result = {}
+	if isinstance(sentences, str):	# if is a string return with no trailing space
+		return removeTrailingSpaceHelp(sentences)
+	for k in sentences:			# is a dict, make it recursive call
+		val = removeTrailingSpace(sentences[k])
+		key = removeTrailingSpaceHelp(k)
+		result[key] = val
+	return result
 
 
 
-	# result = []
-	'''
-	tokenDependReverse = list(range(len(tokens)))
-	for i in range(len(tokens)):
-		targetIndex = tokens[i].dependency_edge.head_token_index
-		tokenDependReverse[targetIndex] = i
+def removeTrailingSpaceHelp(s):
+	count = len(s)
+	while s[count-1] == " ":
+		count -= 1
+	s = s[:count]
+	return s
 
 
-	print(tokenDependReverse)
-	# get the last punc
-	lastPunc = tokens[len(tokens)-1]
-
-	firstDepend = lastPunc["dependency_edge"]["head_token_index"]
-
-	endString = ""
-
-	for i in range(firstDepend):
-		endString+= token[i]["text"]["content"]
-		endString+=" "
-
-	endString += '\n\t'
-
-	for i in range(firstDepend, len(tokens)):
-	'''
 
 
 #str1 = "black hole is a region and has a gravitational field. Region is a space and blocks"
-str1 = "A galaxy has black holes. The universe contains black holes. Black holes are regions and have strong gravity. Region is space and doesn't let light escape."
+#str1 = "A galaxy has black holes. The universe contains black holes. Black holes are regions and have strong gravity. Region is space and doesn't let light escape."
 #str1 = "The boundary of the region from which no escape is possible is called the event horizon."
 #str1= "Moreover, black holes have strong gravity."
 #str1 = "black holes are regions and have strong gravity. region is a space and does not let light escape. "
-syntax_text(str1)
+#syntax_text(str1)
 
 # entities_text(str1)
 
