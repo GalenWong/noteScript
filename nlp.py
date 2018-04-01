@@ -34,7 +34,9 @@ def createVerbObj(tokens, indexes):
 	verb = ""
 	firstVerbSeen = False
 	obj = ""
+	print("indexes: ", indexes)
 	for index in indexes:
+		print("DB3 verb, obj: ", verb, obj)
 		if not firstVerbSeen and pos_tag[tokens[index].part_of_speech.tag] == 'VERB':
 			verb += tokens[index].text.content + " "
 		else:
@@ -68,7 +70,7 @@ def breakToStruct(tokens, startI, endI):
 	for i in range(len(phrases)): # remove moreover, this kind of aux phrase
 		allAuxPunc = True
 		for j in phrases[i]:
-			if pos_tag[tokens[i].part_of_speech.tag] != 'ADV' and pos_tag[tokens[i].part_of_speech.tag]!= 'PUNCT': # although and shit
+			if pos_tag[tokens[j].part_of_speech.tag] != 'ADV' and pos_tag[tokens[j].part_of_speech.tag]!= 'PUNCT': # although and shit
 				allAuxPunc = False
 
 		if not allAuxPunc:
@@ -197,14 +199,15 @@ def syntax_text(text):
 	#   document.type == enums.Document.Type.HTML
 	result = client.analyze_syntax(document)
 	tokens = result.tokens
-	print(result)
+	#print(result)
 	# part-of-speech tags from enums.PartOfSpeech.Tag
 	pos_tag = ('UNKNOWN', 'ADJ', 'ADP', 'ADV', 'CONJ', 'DET', 'NOUN', 'NUM',
 			   'PRON', 'PRT', 'PUNCT', 'VERB', 'X', 'AFFIX')
-
+	'''
 	for token in tokens:
 		print(u'{}: {}'.format(pos_tag[token.part_of_speech.tag],
 							   token.text.content))
+	'''
 
 	start = 0
 	sentences = []
@@ -251,6 +254,8 @@ def removeTrailingSpace(sentences):
 
 def removeTrailingSpaceHelp(s):
 	count = len(s)
+	#if count == 0:
+	#	return ""
 	while s[count-1] == " ":
 		count -= 1
 	s = s[:count]
@@ -264,6 +269,7 @@ def removeTrailingSpaceHelp(s):
 #str1 = "The boundary of the region from which no escape is possible is called the event horizon."
 #str1= "Moreover, black holes have strong gravity."
 #str1 = "black holes are regions and have strong gravity. region is a space and does not let light escape. "
+#str1 ="A star is type of astronomical object consisting of a luminous spheroid of plasma held together by its own gravity. The nearest star to Earth is the Sun. Many other stars are visible to the naked eye from Earth during the night, appearing as a multitude of fixed luminous points in the sky due to their immense distance from Earth. Historically, the most prominent stars were grouped into constellations and asterisms, the brightest of which gained proper names. Astronomers have assembled star catalogues that identify the known stars and provide standardized stellar designations. However, most of the stars in the Universe, including all stars outside our galaxy, the Milky Way, are invisible to the naked eye from Earth. Indeed, most are invisible from Earth even through the most powerful telescopes."
 #syntax_text(str1)
 
 # entities_text(str1)
