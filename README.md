@@ -1,5 +1,6 @@
 # NoteScript
 LA Hacks 2018
+By: Devyan Biswas, Galen Wong, Rishab Sukumar, Siddarth Joshi
 
 ### NoteScript is our solution to note-taking in class. 
 
